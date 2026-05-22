@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Відмітити відвідуваність</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; background-color: #f4f7f6; }
+        .top-nav { background: #333; padding: 15px 40px; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .top-nav a { color: #ddd; text-decoration: none; margin-right: 20px; font-weight: bold; }
+        .main-content { padding: 40px; max-width: 800px; margin: 0 auto; }
+        .card { background: white; padding: 30px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        h1, h2 { color: #333; }
+        .lesson-info { background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 25px; line-height: 1.6; }
+        .status-section { background:  #e9ecef; border: 1px solid #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 25px; }
+        .student-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .student-name { font-size: 16px; font-weight: bold; }
+        .controls { display: flex; gap: 15px; align-items: center; }
+        input[type="text"] { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; width: 250px; }
+        .btn-save { background-color: #28a745; color: white; padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        .btn-save:hover { background-color: #218838; }
+        .btn-back { color: #6c757d; text-decoration: none; font-weight: bold; }
+        select.status-select { padding: 6px 12px; font-weight: bold; border-radius: 4px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+
+    <div class="top-nav">
+        <div>
+            <a href="{% url 'teacher_dashboard' %}">← Назад до панелі</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="card">
+            <h1>Управління уроком та журнал</h1>
+            
+            <div class="lesson-info">
+                <strong>Предмет:</strong> {{ lesson.subject.name }}<br>
+                <strong>Дата:</strong> {{ lesson.date|date:"d.m.Y" }}<br>
+                <strong>Час:</strong> {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
+            </div>
+
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div class="status-section">
+                    <label style="font-weight: bold; margin-right: 15px; color: #333;">Встановіть статус цього уроку:</label>
+                    <select name="lesson_status" class="status-select">
+                        <option value="SCHEDULED" {% if lesson.status == 'SCHEDULED' %}selected{% endif %}>Заплановано</option>
+                        <option value="COMPLETED" {% if lesson.status == 'COMPLETED' %}selected{% endif %}>Проведено</option>
+                        <option value="CANCELED" {% if lesson.status == 'CANCELED' %}selected{% endif %}>Скасовано</option>
+                    </select>
+                </div>
+
+                <h2>Студенти:</h2>
+                {% if students %}
+                    {% for student in students %}
+                    <div class="student-row">
+                        <span class="student-name">{{ student.first_name }} {{ student.last_name }}</span>
+                        
+                        <div class="controls">
+                            <label>
+                                <input type="radio" name="status_{{ student.id }}" value="present" checked> Присутній
+                            </label>
+                            <label>
+                                <input type="radio" name="status_{{ student.id }}" value="absent"> Відсутній
+                            </label>
+                            
+                            <input type="text" name="comment_{{ student.id }}" placeholder="Додати коментар">
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: #666; font-style: italic;">До цієї групи ще не додано студентів.</p>
+                {% endif %}
+
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="{% url 'teacher_dashboard' %}" class="btn-back">Скасувати</a>
+                    <button type="submit" class="btn-save">Зберегти урок та журнал</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
