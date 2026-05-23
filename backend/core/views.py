@@ -75,6 +75,20 @@ def mark_attendance(request, lesson_id):
         return redirect('teacher_dashboard')
     return render(request, 'core/mark_attendance.html', {'lesson': lesson, 'students': students})
 
+@login_required
+def lessons_view(request):
+    lessons = Lesson.objects.all().select_related('subject', 'teacher', 'group', 'student')
+    subjects = Subject.objects.filter(is_active=True)
+    groups = Group.objects.filter(is_active=True)
+    return render(request, 'core/lessons.html', {
+        'lessons': lessons,
+        'subjects': subjects,
+        'groups': groups,
+    })
+
+@login_required
+def reports_view(request):
+    return render(request, 'core/reports.html')
 
 class TeacherLessonsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

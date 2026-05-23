@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Уроки{% endblock %}
+{% block content %}
+
+<h1>Розклад уроків</h1>
+
+<div class="card">
+    <h3>Створити урок</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <div>
+            <label>Тип:</label>
+            <select name="lesson_type">
+                <option value="INDIVIDUAL">Індивідуальний</option>
+                <option value="GROUP">Груповий</option>
+            </select>
+        </div>
+        <div>
+            <label>Предмет:</label>
+            <select name="subject" required>
+                {% for sub in subjects %}
+                    <option value="{{ sub.id }}">{{ sub.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Група:</label>
+            <select name="group">
+                <option value="">-- none --</option>
+                {% for group in groups %}
+                    <option value="{{ group.id }}">{{ group.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Дата:</label>
+            <input type="date" name="date" required>
+            <label>Початок:</label>
+            <input type="time" name="start_time" required>
+            <label>Кінець:</label>
+            <input type="time" name="end_time" required>
+        </div>
+        <br>
+        <button type="submit" class="btn btn-green">Створити</button>
+    </form>
+</div>
+
+<h2>Список уроків</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Час</th>
+            <th>Предмет</th>
+            <th>Вчитель</th>
+            <th>Група/Студент</th>
+            <th>Статус</th>
+            <th>Дії</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lesson in lessons %}
+        <tr>
+            <td>{{ lesson.date|date:"d.m.Y" }}</td>
+            <td>{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</td>
+            <td>{{ lesson.subject.name }}</td>
+            <td>{{ lesson.teacher.first_name }} {{ lesson.teacher.last_name }}</td>
+            <td>{{ lesson.group.name|default:lesson.student }}</td>
+            <td>
+                {% if lesson.status == 'COMPLETED' %}
+                    <span class="badge badge-comp">Проведено</span>
+                {% elif lesson.status == 'CANCELLED' %}
+                    <span class="badge badge-canc">Скасовано</span>
+                {% else %}
+                    <span class="badge badge-sched">Заплановано</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'mark_attendance' lesson.id %}" class="btn btn-blue">Відвідуваність</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7">Уроків немає.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}
