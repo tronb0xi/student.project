@@ -77,9 +77,43 @@ def mark_attendance(request, lesson_id):
 
 @login_required
 def lessons_view(request):
-    lessons = Lesson.objects.all().select_related('subject', 'teacher', 'group', 'student')
-    subjects = Subject.objects.filter(is_active=True)
-    groups = Group.objects.filter(is_active=True)
+    user = request.user
+    
+    # 1. ОБРОБКА POST-ЗАПИТУ (Створення уроку)
+    if request.method == 'POST':
+        subject_id = request.POST.get('subject')
+        group_id = request.POST.get('group')
+        date = request.POST.get('date')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
+        lesson_type = request.POST.get('lesson_type', 'INDIVIDUAL')
+        
+        if subject_id and date and start_time and end_time:
+            actual_group = None
+            if group_id and group_id != '' and group_id != '-- none --':
+                actual_group = group_id
+
+            Lesson.objects.create(
+                subject_id=subject_id,
+                group_id=actual_group,
+                date=date,
+                start_time=start_time,
+                end_time=end_time,
+                teacher=user,
+                lesson_type=lesson_type,
+                status='SCHEDULED'
+            )
+            messages.success(request, "Урок успішно додано!")
+            # Перенаправляємо на ім'я 'lessons', яке прописане в твоїх urls.py
+            return redirect('lessons')  
+        else:
+            messages.error(request, "Будь ласка, заповніть усі обов'язкові поля.")
+
+    # 2. ОБРОБКА GET-ЗАПИТУ (Відображення сторінки)
+    lessons = Lesson.objects.all().select_related('subject', 'teacher', 'group', 'student').order_by('date', 'start_time')
+    subjects = Subject.objects.all()
+    groups = Group.objects.all()
+    
     return render(request, 'core/lessons.html', {
         'lessons': lessons,
         'subjects': subjects,

@@ -1,118 +1,43 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <title>Панель вчителя</title>
-    <style>
-        body { font-family: sans-serif; margin: 0; background-color: #f4f7f6; }
-        .top-nav { background: #333; padding: 15px 40px; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .top-nav a { color: #ddd; text-decoration: none; margin-right: 20px; font-weight: bold; }
-        .main-content { padding: 40px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
-        .alert-success { background-color: #d4edda; color: #155724; padding: 12px; margin-bottom: 20px; border-radius: 4px; border: 1px solid #c3e6cb; font-weight: bold; }
-        .alert-error { background-color: #f8d7da; color: #721c24; padding: 12px; margin-bottom: 20px; border-radius: 4px; border: 1px solid #f5c6cb; font-weight: bold; }
-        .create-lesson-form { background: white; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 30px; }
-        .form-row { display: flex; gap: 10px; align-items: center; }
-        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-create { background-color: #28a745; color: white; padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #007bff; color: white; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-sched { background-color: #ffc107; color: #212529; }
-        .badge-comp { background-color: #28a745; color: white; }
-        .badge-canc { background-color: #dc3545; color: white; }
-    </style>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block title %}Головна{% endblock %}
+{% block content %}
 
-    <div class="top-nav">
-        <div>
-            <a href="#">Головна</a>
-            <a href="#">Уроки</a>
-            <a href="#">Звіти</a>
-        </div>
-        <form action="{% url 'admin:logout' %}" method="post">
-            {% csrf_token %}
-            <button type="submit" style="background:none; border:none; color:#ff4444; cursor:pointer; font-weight:bold;">Вийти</button>
-        </form>
-    </div>
+<h1>Вітаємо, {{ request.user.first_name }}!</h1>
 
-    <div class="main-content">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="{% if message.tags == 'success' %}alert-success{% else %}alert-error{% endif %}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+<h2>Ваш розклад:</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Час</th>
+            <th>Предмет</th>
+            <th>Статус</th>
+            <th>Дія</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lesson in lessons %}
+        <tr>
+            <td>{{ lesson.date|date:"d.m.Y" }}</td>
+            <td>{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</td>
+            <td>{{ lesson.subject.name }}</td>
+            <td>
+                {% if lesson.status == 'COMPLETED' %}
+                    <span class="badge badge-comp">Проведено</span>
+                {% elif lesson.status == 'CANCELLED' %}
+                    <span class="badge badge-canc">Скасовано</span>
+                {% else %}
+                    <span class="badge badge-sched">Заплановано</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'mark_attendance' lesson.id %}" class="btn btn-blue">Відмітити</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Уроків поки немає.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
 
-        <div class="header">
-            <h1>Вітаємо, {{ request.user.first_name }}!</h1>
-        </div>
-
-        <div class="create-lesson-form">
-            <h3>Створити новий урок</h3>
-            <form method="POST">
-                {% csrf_token %}
-                <div class="form-row">
-                    <input type="date" name="date" required>
-                    <input type="time" name="start_time" required>
-                    <input type="time" name="end_time" required>
-                    
-                    <select name="subject" required>
-                        {% for sub in subjects %}
-                            <option value="{{ sub.id }}">{{ sub.name }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <select name="group" required>
-                        <option value="">-- Оберіть групу --</option>
-                        {% for group in groups %}
-                            <option value="{{ group.id }}">{{ group.name }}</option>
-                        {% endfor %}
-                    </select>
-
-                    <button type="submit" class="btn-create">Створити</button>
-                </div>
-            </form>
-        </div>
-
-        <h2>Ваш розклад:</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Дата</th>
-                    <th>Час</th>
-                    <th>Предмет</th>
-                    <th>Статус</th>
-                    <th>Дія</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for lesson in lessons %}
-                <tr>
-                    <td>{{ lesson.date|date:"d.m.Y" }}</td>
-                    <td>{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</td>
-                    <td>{{ lesson.subject.name }}</td>
-                    <td>
-                        {% if lesson.status == 'COMPLETED' %}
-                            <span class="badge badge-comp">Проведено</span>
-                        {% elif lesson.status == 'CANCELED' %}
-                            <span class="badge badge-canc">Скасовано</span>
-                        {% else %}
-                            <span class="badge badge-sched">Заплановано</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'mark_attendance' lesson.id %}" style="color: blue; font-weight: bold;">Відмітити / Змінити</a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="5">Уроків поки немає.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
+{% endblock %}

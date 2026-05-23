@@ -6,7 +6,7 @@
 
 <div class="card">
     <h3>Створити урок</h3>
-    <form method="POST">
+    <form method="POST" action="{% url 'lessons' %}">
         {% csrf_token %}
         <div>
             <label>Тип:</label>
@@ -51,7 +51,7 @@
         <tr>
             <th>Дата</th>
             <th>Час</th>
-            <th>Предмет</th>
+            <th>Тип</th> <th>Предмет</th>
             <th>Вчитель</th>
             <th>Група/Студент</th>
             <th>Статус</th>
@@ -63,6 +63,13 @@
         <tr>
             <td>{{ lesson.date|date:"d.m.Y" }}</td>
             <td>{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</td>
+            <td>
+                {% if lesson.lesson_type == 'INDIVIDUAL' %}
+                    <span class="badge" style="background-color: #6c757d; color: white;">Індивідуальний</span>
+                {% else %}
+                    <span class="badge" style="background-color: #17a2b8; color: white;">Груповий</span>
+                {% endif %}
+            </td>
             <td>{{ lesson.subject.name }}</td>
             <td>{{ lesson.teacher.first_name }} {{ lesson.teacher.last_name }}</td>
             <td>{{ lesson.group.name|default:lesson.student }}</td>
