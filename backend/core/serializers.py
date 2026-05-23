@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Lesson, Student, Attendance, Subject, Group
-from .models import Branch, SubscriptionPlan, SubscriptionPrice
+from .models import Branch, SubscriptionPlan, SubscriptionPrice, Subscription, LessonTemplate
 
 
 class BranchSerializer(serializers.ModelSerializer):
@@ -29,21 +29,27 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'branch', 'plan_type', 'subjects', 'is_active', 'prices']
 
 
+class SubscriptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subscription
+        fields = ['id', 'student', 'subject', 'plan', 'start_date', 'is_active']
+
+    def validate(self, data):
+        plan = data.get('plan')
+        subject = data.get('subject')
+        if plan and subject and subject not in plan.subjects.all():
+            raise serializers.ValidationError('Subject is not in the subscription plan.')
+        return data
+
+
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
             'id', 'first_name', 'last_name', 'date_of_birth', 'phone', 'email',
             'address', 'parent_name', 'parent_phone', 'parent_email', 'parent_relationship',
-            'branch', 'is_active', 'subscription_plan'
+            'branch', 'is_active'
         ]
-
-    def validate(self, data):
-        branch = data.get('branch')
-        subscription_plan = data.get('subscription_plan')
-        if subscription_plan and branch and subscription_plan.branch_id != branch.id:
-            raise serializers.ValidationError('Subscription plan must belong to the same branch as the student.')
-        return data
 
 
 class GroupSerializer(serializers.ModelSerializer):
@@ -64,16 +70,13 @@ class GroupSerializer(serializers.ModelSerializer):
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attendance
-        fields = ['id', 'lesson', 'student', 'date', 'is_present', 'comment']
+        fields = ['id', 'lesson', 'student', 'is_present', 'comment']
 
     def validate(self, data):
         lesson = data.get('lesson')
         student = data.get('student')
-        date = data.get('date')
         if lesson.status == 'CANCELLED':
             raise serializers.ValidationError('Cannot mark attendance for a cancelled lesson.')
-        if date and date != lesson.date:
-            raise serializers.ValidationError('Attendance date must match the lesson date.')
         if lesson.lesson_type == 'INDIVIDUAL' and lesson.student_id != student.id:
             raise serializers.ValidationError('Student is not participant of this individual lesson.')
         if lesson.lesson_type == 'GROUP' and student not in lesson.group.students.all():
@@ -95,7 +98,7 @@ class LessonSerializer(serializers.ModelSerializer):
         date = data.get('date')
 
         if start and end and start >= end:
-            raise serializers.ValidationError("Час початку має бути раніше часу завершення!")
+            raise serializers.ValidationError('Час початку має бути раніше часу завершення!')
 
         qs = Lesson.objects.filter(date=date).exclude(status='CANCELLED')
 
@@ -113,6 +116,26 @@ class LessonSerializer(serializers.ModelSerializer):
             conflicts = conflicts.exclude(id=self.instance.id)
 
         if conflicts.exists():
-            raise serializers.ValidationError("Конфлікт у розкладі: вчитель або студент зайняті у цей час!")
+            raise serializers.ValidationError('Конфлікт у розкладі: вчитель або студент зайняті у цей час!')
 
+        return data
+
+
+class LessonTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessonTemplate
+        fields = '__all__'
+
+    def validate(self, data):
+        if data.get('date_from') and data.get('date_to'):
+            if data['date_from'] > data['date_to']:
+                raise serializers.ValidationError('date_from must be before date_to.')
+        if data.get('start_time') and data.get('end_time'):
+            if data['start_time'] >= data['end_time']:
+                raise serializers.ValidationError('start_time must be before end_time.')
+        lesson_type = data.get('lesson_type')
+        if lesson_type == 'INDIVIDUAL' and not data.get('student'):
+            raise serializers.ValidationError('Individual template requires a student.')
+        if lesson_type == 'GROUP' and not data.get('group'):
+            raise serializers.ValidationError('Group template requires a group.')
         return data

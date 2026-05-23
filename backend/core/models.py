@@ -64,10 +64,22 @@ class Student(models.Model):
     branch = models.ForeignKey(Branch, on_delete=models.CASCADE, related_name='students')
     is_active = models.BooleanField(default=True)
 
-    subscription_plan = models.ForeignKey(SubscriptionPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name='subscribed_students')
-
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+
+
+class Subscription(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='subscriptions')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subscriptions')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='subscriptions')
+    start_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('student', 'subject')
+
+    def __str__(self):
+        return f"{self.student} - {self.subject.name} ({self.plan.name})"
 
 
 class Group(models.Model):
@@ -102,20 +114,44 @@ class Lesson(models.Model):
     def __str__(self):
         who = self.student or self.group
         return f"{self.subject.name} - {who} ({self.date} {self.start_time})"
+    
+class LessonTemplate(models.Model):
+    LESSON_TYPE = [('INDIVIDUAL', 'Individual'), ('GROUP', 'Group')]
+    DAYS_OF_WEEK = [
+        (0, 'Monday'), (1, 'Tuesday'), (2, 'Wednesday'),
+        (3, 'Thursday'), (4, 'Friday'), (5, 'Saturday'), (6, 'Sunday')
+    ]
+
+    lesson_type = models.CharField(max_length=20, choices=LESSON_TYPE)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='templates')
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='templates')
+
+    student = models.ForeignKey(Student, on_delete=models.SET_NULL, null=True, blank=True, related_name='individual_templates')
+    group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, related_name='group_templates')
+
+    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    date_from = models.DateField()
+    date_to = models.DateField()
+
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        who = self.student or self.group
+        return f"{self.subject.name} - {who} ({self.get_day_of_week_display()} {self.start_time})"
 
 
 class Attendance(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='attendance_records')
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendances')
-    status = models.BooleanField(default=False)
-    note = models.TextField(blank=True, null=True)
-    date = models.DateField()
     is_present = models.BooleanField(default=False)
     comment = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('lesson', 'student', 'date')
+        unique_together = ('lesson', 'student')
 
     def __str__(self):
         status = "Present" if self.is_present else "Absent"
-        return f"{self.student} - {self.date}: {status}"
+        return f"{self.student} - {self.lesson.date}: {status}"
