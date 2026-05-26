@@ -93,23 +93,99 @@ class Group(models.Model):
 
 
 class Lesson(models.Model):
-    LESSON_TYPE = [('INDIVIDUAL', 'Individual'), ('GROUP', 'Group')]
-    STATUS = [('SCHEDULED', 'Scheduled'), ('COMPLETED', 'Completed'), ('CANCELLED', 'Cancelled')]
+    LESSON_TYPE = [
+        ('INDIVIDUAL', 'Individual'),
+        ('GROUP', 'Group')
+    ]
 
-    lesson_type = models.CharField(max_length=20, choices=LESSON_TYPE, default='GROUP')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='lessons')
-    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, limit_choices_to={'role': 'TEACHER'}, related_name='lessons')
+    STATUS = [
+        ('SCHEDULED', 'Scheduled'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled')
+    ]
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True, related_name='individual_lessons')
-    group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True, related_name='group_lessons')
+    SCHEDULE_TYPE = [
+        ('single', 'Один урок'),
+        ('recurring', 'Повторюваний урок')
+    ]
 
-    date = models.DateField(null=True, blank=True)
+    lesson_type = models.CharField(
+        max_length=20,
+        choices=LESSON_TYPE,
+        default='GROUP'
+    )
+
+    schedule_type = models.CharField(
+        max_length=20,
+        choices=SCHEDULE_TYPE,
+        default='single'
+    )
+
+    repeat_until = models.DateField(
+        null=True,
+        blank=True
+    )
+
+    repeat_days = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='lessons'
+    )
+
+    teacher = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        limit_choices_to={'role': 'TEACHER'},
+        related_name='lessons'
+    )
+
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='individual_lessons'
+    )
+
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='group_lessons'
+    )
+
+    date = models.DateField(
+        null=True,
+        blank=True
+    )
+
     start_time = models.TimeField()
+
     end_time = models.TimeField()
-    status = models.CharField(max_length=20, choices=STATUS, default='SCHEDULED')
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS,
+        default='SCHEDULED'
+    )
 
     class Meta:
-        indexes = [models.Index(fields=['teacher', 'date', 'start_time', 'end_time'])]
+        indexes = [
+            models.Index(
+                fields=[
+                    'teacher',
+                    'date',
+                    'start_time',
+                    'end_time'
+                ]
+            )
+        ]
 
     def __str__(self):
         who = self.student or self.group

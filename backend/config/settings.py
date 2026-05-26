@@ -1,22 +1,12 @@
-"""
-Django settings for backend.config project (moved into backend/).
-"""
-
 from pathlib import Path
+import os
 
-# BASE_DIR points to repository root (one level above backend)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-
-# Quick-start development settings - unsuitable for production
 
 SECRET_KEY = 'django-insecure-dkkdv25m7d2%v#e+y223_7dqdf(_h_04yod7t==kb83q7eg--x'
 DEBUG = True
 
 ALLOWED_HOSTS = []
-
-
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -61,15 +51,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.config.wsgi.application'
 
-
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'edudb'),
+            'USER': os.environ.get('POSTGRES_USER', 'eduuser'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'edupassword'),
+            'HOST': os.environ.get('POSTGRES_HOST', 'db'),
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        }
     }
-}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -86,7 +85,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
@@ -94,7 +92,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 
 USE_TZ = True
-
 
 STATIC_URL = 'static/'
 
@@ -106,6 +103,7 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
 }
 

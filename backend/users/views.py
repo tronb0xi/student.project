@@ -36,16 +36,27 @@ def login_view(request):
     if request.method == 'POST':
         phone = request.POST.get('phone')
         password = request.POST.get('password')
-        user = authenticate(request, phone_number=phone, password=password)
-        
+
+        user = authenticate(
+            request,
+            phone_number=phone,
+            password=password
+        )
+
         if user is not None:
             login(request, user)
+
+            if user.role == 'ADMIN' or user.is_staff:
+                return redirect('admin_panel')
+
             if user.role == 'TEACHER':
                 return redirect('teacher_dashboard')
-            return redirect('/admin/')
+
+            return redirect('login')
+
         else:
             messages.error(request, "Невірні дані")
-            
+
     return render(request, 'users/login.html')
 
 def logout_view(request):

@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Студенти{% endblock %}
+{% block content %}
+
+<h1>Студенти</h1>
+
+<div class="card">
+    <h3>Додати студента</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <div>
+            <label>Імʼя:</label>
+            <input type="text" name="first_name" required>
+            <label>Прізвище:</label>
+            <input type="text" name="last_name" required>
+        </div>
+        <div>
+            <label>Телефон:</label>
+            <input type="text" name="phone">
+            <label>Email:</label>
+            <input type="email" name="email">
+        </div>
+        <div>
+            <label>Філія:</label>
+            <select name="branch" required>
+                {% for branch in branches %}
+                    <option value="{{ branch.id }}">{{ branch.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <br>
+        <button type="submit" class="btn btn-green">Додати</button>
+    </form>
+</div>
+
+<h2>Список студентів</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Імʼя</th>
+            <th>Прізвище</th>
+            <th>Телефон</th>
+            <th>Філія</th>
+            <th>Статус</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for student in students %}
+        <tr>
+            <td>{{ student.first_name }}</td>
+            <td>{{ student.last_name }}</td>
+            <td>{{ student.phone }}</td>
+            <td>{{ student.branch.name }}</td>
+            <td><span class="badge badge-comp">Активний</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">Студентів немає.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

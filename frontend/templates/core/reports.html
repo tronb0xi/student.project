@@ -1,48 +1,202 @@
 {% extends 'base.html' %}
+
 {% block title %}Звіти{% endblock %}
+
 {% block content %}
 
 <h1>Звіти</h1>
 
-<div class="card">
-    <h3>Розклад вчителя</h3>
-    <form method="GET" action="/api/reports/teacher-schedule/">
-        <label>Вчитель ID:</label>
-        <input type="number" name="teacher_id" placeholder="ID вчителя">
-        <label>З:</label>
-        <input type="date" name="date_from">
-        <label>По:</label>
-        <input type="date" name="date_to">
-        <button type="submit" class="btn btn-blue">Переглянути</button>
-    </form>
+<div class="cards">
+
+    <div class="card">
+        <h2>Усього уроків</h2>
+        <p class="big-number">{{ total_lessons }}</p>
+    </div>
+
+    <div class="card">
+        <h2>Заплановані</h2>
+        <p class="big-number">{{ scheduled_lessons }}</p>
+    </div>
+
+    <div class="card">
+        <h2>Проведені</h2>
+        <p class="big-number">{{ completed_lessons }}</p>
+    </div>
+
+    <div class="card">
+        <h2>Скасовані</h2>
+        <p class="big-number">{{ cancelled_lessons }}</p>
+    </div>
+
 </div>
 
-<div class="card">
-    <h3>Відвідуваність студента</h3>
-    <form method="GET" action="/api/reports/attendance-history/">
-        <label>Студент ID:</label>
-        <input type="number" name="student_id" placeholder="ID студента" required>
-        <label>Предмет ID:</label>
-        <input type="number" name="subject_id" placeholder="необов'язково">
-        <label>З:</label>
-        <input type="date" name="date_from">
-        <label>По:</label>
-        <input type="date" name="date_to">
-        <button type="submit" class="btn btn-blue">Переглянути</button>
-    </form>
+<h2>Відвідуваність</h2>
+
+<div class="cards">
+
+    <div class="card">
+        <h3>Присутні</h3>
+        <p class="big-number">{{ present_count }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Відсутні</h3>
+        <p class="big-number">{{ absent_count }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Відсоток відвідуваності</h3>
+        <p class="big-number">{{ attendance_percent }}%</p>
+    </div>
+
 </div>
 
-<div class="card">
-    <h3>Статистика філії</h3>
-    <form method="GET" action="/api/reports/branch-statistics/">
-        <label>Філія ID:</label>
-        <input type="number" name="branch_id" placeholder="ID філії" required>
-        <label>З:</label>
-        <input type="date" name="date_from">
-        <label>По:</label>
-        <input type="date" name="date_to">
-        <button type="submit" class="btn btn-blue">Переглянути</button>
-    </form>
-</div>
+<h2>Останні уроки</h2>
+
+<table>
+
+    <thead>
+        <tr>
+            <th>Дата</th>
+            <th>Час</th>
+            <th>Тип</th>
+            <th>Предмет</th>
+            <th>Вчитель</th>
+            <th>Група / студент</th>
+            <th>Статус</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {% for lesson in lessons %}
+
+        <tr>
+
+            <td>
+                {{ lesson.date|date:"d.m.Y" }}
+            </td>
+
+            <td>
+                {{ lesson.start_time|time:"H:i" }} -
+                {{ lesson.end_time|time:"H:i" }}
+            </td>
+
+            <td>
+
+                {% if lesson.lesson_type == 'GROUP' %}
+
+                    <span class="badge badge-group">
+                        Груповий
+                    </span>
+
+                {% else %}
+
+                    <span class="badge badge-individual">
+                        Індивідуальний
+                    </span>
+
+                {% endif %}
+
+            </td>
+
+            <td>
+                {{ lesson.subject.name }}
+            </td>
+
+            <td>
+                {{ lesson.teacher.first_name }}
+                {{ lesson.teacher.last_name }}
+            </td>
+
+            <td>
+
+                {% if lesson.group %}
+
+                    {{ lesson.group.name }}
+
+                {% elif lesson.student %}
+
+                    {{ lesson.student.first_name }}
+                    {{ lesson.student.last_name }}
+
+                {% else %}
+
+                    —
+
+                {% endif %}
+
+            </td>
+
+            <td>
+
+                {% if lesson.status == 'SCHEDULED' %}
+
+                    <span class="badge badge-sched">
+                        Заплановано
+                    </span>
+
+                {% elif lesson.status == 'COMPLETED' %}
+
+                    <span class="badge badge-comp">
+                        Проведено
+                    </span>
+
+                {% elif lesson.status == 'CANCELLED' %}
+
+                    <span class="badge badge-canc">
+                        Скасовано
+                    </span>
+
+                {% else %}
+
+                    {{ lesson.status }}
+
+                {% endif %}
+
+            </td>
+
+        </tr>
+
+        {% empty %}
+
+        <tr>
+            <td colspan="7">
+                Уроків немає.
+            </td>
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+<style>
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.big-number {
+    font-size: 32px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.badge-group {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-individual {
+    background-color: #6c757d;
+    color: white;
+}
+
+</style>
 
 {% endblock %}

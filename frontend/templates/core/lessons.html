@@ -6,8 +6,10 @@
 
 <div class="card">
     <h3>Створити урок</h3>
-    <form method="POST" action="{% url 'lessons' %}">
+
+    <form method="POST">
         {% csrf_token %}
+
         <div>
             <label>Тип:</label>
             <select name="lesson_type">
@@ -15,64 +17,163 @@
                 <option value="GROUP">Груповий</option>
             </select>
         </div>
+
+        <div>
+            <label>Вид уроку:</label>
+            <select name="schedule_type">
+                <option value="single">Один урок</option>
+                <option value="recurring">Повторюваний урок</option>
+            </select>
+        </div>
+
+        <div>
+            <label>Вчитель:</label>
+            <select name="teacher" required>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}">
+                        {{ teacher.first_name }} {{ teacher.last_name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label>Філія:</label>
+            <select name="branch">
+                {% for branch in branches %}
+                    <option value="{{ branch.id }}">
+                        {{ branch.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
         <div>
             <label>Предмет:</label>
             <select name="subject" required>
                 {% for sub in subjects %}
-                    <option value="{{ sub.id }}">{{ sub.name }}</option>
+                    <option value="{{ sub.id }}">
+                        {{ sub.name }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
+
         <div>
             <label>Група:</label>
             <select name="group">
                 <option value="">-- none --</option>
                 {% for group in groups %}
-                    <option value="{{ group.id }}">{{ group.name }}</option>
+                    <option value="{{ group.id }}">
+                        {{ group.name }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
+
         <div>
-            <label>Дата:</label>
+            <label>Дата початку:</label>
             <input type="date" name="date" required>
+
             <label>Початок:</label>
             <input type="time" name="start_time" required>
+
             <label>Кінець:</label>
             <input type="time" name="end_time" required>
         </div>
+
+        <div>
+            <label>Дні повторення:</label>
+
+            <label><input type="checkbox" name="week_days" value="0"> Пн</label>
+            <label><input type="checkbox" name="week_days" value="1"> Вт</label>
+            <label><input type="checkbox" name="week_days" value="2"> Ср</label>
+            <label><input type="checkbox" name="week_days" value="3"> Чт</label>
+            <label><input type="checkbox" name="week_days" value="4"> Пт</label>
+            <label><input type="checkbox" name="week_days" value="5"> Сб</label>
+            <label><input type="checkbox" name="week_days" value="6"> Нд</label>
+        </div>
+
+        <div>
+            <label>Повторювати до:</label>
+            <input type="date" name="date_to">
+        </div>
+
         <br>
-        <button type="submit" class="btn btn-green">Створити</button>
+
+        <button type="submit" class="btn btn-green">
+            Створити
+        </button>
     </form>
 </div>
 
 <h2>Список уроків</h2>
+
 <table>
     <thead>
         <tr>
             <th>Дата</th>
             <th>Час</th>
-            <th>Тип</th> <th>Предмет</th>
+            <th>Тип</th>
+            <th>Повторення</th>
+            <th>Предмет</th>
             <th>Вчитель</th>
             <th>Група/Студент</th>
             <th>Статус</th>
             <th>Дії</th>
         </tr>
     </thead>
+
     <tbody>
         {% for lesson in lessons %}
         <tr>
             <td>{{ lesson.date|date:"d.m.Y" }}</td>
-            <td>{{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}</td>
+
+            <td>
+                {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
+            </td>
+
             <td>
                 {% if lesson.lesson_type == 'INDIVIDUAL' %}
-                    <span class="badge" style="background-color: #6c757d; color: white;">Індивідуальний</span>
+                    <span class="badge badge-individual">
+                        Індивідуальний
+                    </span>
                 {% else %}
-                    <span class="badge" style="background-color: #17a2b8; color: white;">Груповий</span>
+                    <span class="badge badge-group">
+                        Груповий
+                    </span>
                 {% endif %}
             </td>
+
+            <td>
+                {% if lesson.schedule_type == 'recurring' %}
+
+                    {{ lesson.repeat_days }}<br>
+                    до {{ lesson.repeat_until|date:"d.m.Y" }}
+
+                {% else %}
+
+                    Один урок
+
+                {% endif %}
+            </td>
+
             <td>{{ lesson.subject.name }}</td>
-            <td>{{ lesson.teacher.first_name }} {{ lesson.teacher.last_name }}</td>
-            <td>{{ lesson.group.name|default:lesson.student }}</td>
+
+            <td>
+                {{ lesson.teacher.first_name }} {{ lesson.teacher.last_name }}
+            </td>
+
+            <td>
+                {% if lesson.group %}
+                    {{ lesson.group.name }}
+                {% elif lesson.student %}
+                    {{ lesson.student.first_name }} {{ lesson.student.last_name }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+
             <td>
                 {% if lesson.status == 'COMPLETED' %}
                     <span class="badge badge-comp">Проведено</span>
@@ -82,14 +183,31 @@
                     <span class="badge badge-sched">Заплановано</span>
                 {% endif %}
             </td>
+
             <td>
-                <a href="{% url 'mark_attendance' lesson.id %}" class="btn btn-blue">Відвідуваність</a>
+                <a href="{% url 'mark_attendance' lesson.id %}" class="btn btn-blue">
+                    Відвідуваність
+                </a>
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7">Уроків немає.</td></tr>
+        <tr>
+            <td colspan="9">Уроків немає.</td>
+        </tr>
         {% endfor %}
     </tbody>
 </table>
+
+<style>
+.badge-group {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-individual {
+    background-color: #6c757d;
+    color: white;
+}
+</style>
 
 {% endblock %}

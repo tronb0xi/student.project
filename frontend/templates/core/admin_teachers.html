@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Вчителі{% endblock %}
+{% block content %}
+
+<h1>Вчителі</h1>
+
+<div class="card">
+    <h3>Додати вчителя</h3>
+    <form method="POST">
+        {% csrf_token %}
+        <div>
+            <label>Імʼя:</label>
+            <input type="text" name="first_name" required>
+            <label>Прізвище:</label>
+            <input type="text" name="last_name" required>
+        </div>
+        <div>
+            <label>Номер телефону:</label>
+            <input type="text" name="phone_number" required>
+            <label>Пароль:</label>
+            <input type="password" name="password" required>
+        </div>
+        <br>
+        <button type="submit" class="btn btn-green">Додати</button>
+    </form>
+</div>
+
+<h2>Список вчителів</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Імʼя</th>
+            <th>Прізвище</th>
+            <th>Телефон</th>
+            <th>Статус</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for teacher in teachers %}
+        <tr>
+            <td>{{ teacher.first_name }}</td>
+            <td>{{ teacher.last_name }}</td>
+            <td>{{ teacher.phone_number }}</td>
+            <td><span class="badge badge-comp">Активний</span></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">Вчителів немає.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

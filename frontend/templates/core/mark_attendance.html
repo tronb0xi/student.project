@@ -41,7 +41,9 @@
             {% endif %}
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
-                <a href="{% url 'teacher_dashboard' %}" style="color: #6c757d; font-weight: bold; text-decoration: none;">Скасувати</a>
+                <a href="{% url 'lessons' %}" class="btn btn-red">
+                    Скасувати
+                </a>
                 <button type="submit" class="btn btn-green">Зберегти</button>
             </div>
         </form>

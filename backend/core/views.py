@@ -53,16 +53,24 @@ def teacher_dashboard(request):
 
 @login_required
 def mark_attendance(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id, teacher=request.user)
+    if request.user.role == 'ADMIN' or request.user.is_staff:
+        lesson = get_object_or_404(Lesson, id=lesson_id)
+    else:
+        lesson = get_object_or_404(Lesson, id=lesson_id, teacher=request.user)
+
     students = lesson.group.students.all() if lesson.group else ([lesson.student] if lesson.student else [])
+
     if request.method == 'POST':
         custom_status = request.POST.get('lesson_status')
+
         if custom_status and hasattr(lesson, 'status'):
             lesson.status = custom_status
             lesson.save()
+
         for student in students:
             status_val = request.POST.get(f'status_{student.id}')
             comment_val = request.POST.get(f'comment_{student.id}', '')
+
             Attendance.objects.update_or_create(
                 lesson=lesson,
                 student=student,
@@ -71,58 +79,362 @@ def mark_attendance(request, lesson_id):
                     'comment': comment_val
                 }
             )
+
         messages.success(request, "Дані уроку та відвідуваність збережено!")
-        return redirect('teacher_dashboard')
-    return render(request, 'core/mark_attendance.html', {'lesson': lesson, 'students': students})
 
-@login_required
-def lessons_view(request):
-    user = request.user
-    
-    # 1. ОБРОБКА POST-ЗАПИТУ (Створення уроку)
-    if request.method == 'POST':
-        subject_id = request.POST.get('subject')
-        group_id = request.POST.get('group')
-        date = request.POST.get('date')
-        start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
-        lesson_type = request.POST.get('lesson_type', 'INDIVIDUAL')
-        
-        if subject_id and date and start_time and end_time:
-            actual_group = None
-            if group_id and group_id != '' and group_id != '-- none --':
-                actual_group = group_id
+        if request.user.role == 'ADMIN' or request.user.is_staff:
+            return redirect('lessons')
 
-            Lesson.objects.create(
-                subject_id=subject_id,
-                group_id=actual_group,
-                date=date,
-                start_time=start_time,
-                end_time=end_time,
-                teacher=user,
-                lesson_type=lesson_type,
-                status='SCHEDULED'
-            )
-            messages.success(request, "Урок успішно додано!")
-            # Перенаправляємо на ім'я 'lessons', яке прописане в твоїх urls.py
-            return redirect('lessons')  
-        else:
-            messages.error(request, "Будь ласка, заповніть усі обов'язкові поля.")
+        if request.user.role == 'ADMIN' or request.user.is_staff:
+            return redirect('lessons')
 
-    # 2. ОБРОБКА GET-ЗАПИТУ (Відображення сторінки)
-    lessons = Lesson.objects.all().select_related('subject', 'teacher', 'group', 'student').order_by('date', 'start_time')
-    subjects = Subject.objects.all()
-    groups = Group.objects.all()
-    
-    return render(request, 'core/lessons.html', {
-        'lessons': lessons,
-        'subjects': subjects,
-        'groups': groups,
+        return redirect('/teacher/lessons/')
+
+    return render(request, 'core/mark_attendance.html', {
+        'lesson': lesson,
+        'students': students
     })
 
 @login_required
+def lessons_view(request):
+    from backend.users.models import User
+
+    if request.method == 'POST':
+
+        subject_id = request.POST.get('subject')
+        group_id = request.POST.get('group') or None
+        date = request.POST.get('date')
+        start_time = request.POST.get('start_time')
+        end_time = request.POST.get('end_time')
+        lesson_type = request.POST.get('lesson_type')
+        teacher_id = request.POST.get('teacher')
+
+        schedule_type = request.POST.get('schedule_type')
+        date_to = request.POST.get('date_to')
+        week_days = request.POST.getlist('week_days')
+
+        days_map = {
+            '0': 'Пн',
+            '1': 'Вт',
+            '2': 'Ср',
+            '3': 'Чт',
+            '4': 'Пт',
+            '5': 'Сб',
+            '6': 'Нд',
+        }
+
+        repeat_days_text = ', '.join(
+            [days_map[day] for day in week_days]
+        )
+
+        created_count = 0
+        conflict_count = 0
+
+        if schedule_type == 'recurring' and date_to and week_days:
+
+            current_date = datetime.datetime.strptime(
+                date,
+                "%Y-%m-%d"
+            ).date()
+
+            end_repeat_date = datetime.datetime.strptime(
+                date_to,
+                "%Y-%m-%d"
+            ).date()
+
+            selected_week_days = [
+                int(day) for day in week_days
+            ]
+
+            while current_date <= end_repeat_date:
+
+                if current_date.weekday() in selected_week_days:
+
+                    conflict = Lesson.objects.filter(
+                        teacher_id=teacher_id,
+                        date=current_date,
+                        start_time__lt=end_time,
+                        end_time__gt=start_time
+                    ).exclude(
+                        status='CANCELLED'
+                    ).exists()
+
+                    if conflict:
+
+                        conflict_count += 1
+
+                    else:
+
+                        Lesson.objects.create(
+                            lesson_type=lesson_type,
+                            schedule_type='recurring',
+                            repeat_until=end_repeat_date,
+                            repeat_days=repeat_days_text,
+                            subject_id=subject_id,
+                            group_id=group_id,
+                            date=current_date,
+                            start_time=start_time,
+                            end_time=end_time,
+                            teacher_id=teacher_id,
+                            status='SCHEDULED'
+                        )
+
+                        created_count += 1
+
+                current_date += datetime.timedelta(days=1)
+
+            if created_count > 0:
+                messages.success(
+                    request,
+                    f"Створено повторюваних уроків: {created_count}"
+                )
+
+            if conflict_count > 0:
+                messages.error(
+                    request,
+                    f"Пропущено через конфліктів: {conflict_count}"
+                )
+
+        else:
+
+            conflict = Lesson.objects.filter(
+                teacher_id=teacher_id,
+                date=date,
+                start_time__lt=end_time,
+                end_time__gt=start_time
+            ).exclude(
+                status='CANCELLED'
+            ).exists()
+
+            if conflict:
+
+                messages.error(
+                    request,
+                    "Конфлікт: вчитель вже має урок в цей час!"
+                )
+
+            else:
+
+                Lesson.objects.create(
+                    lesson_type=lesson_type,
+                    schedule_type='single',
+                    subject_id=subject_id,
+                    group_id=group_id,
+                    date=date,
+                    start_time=start_time,
+                    end_time=end_time,
+                    teacher_id=teacher_id,
+                    status='SCHEDULED'
+                )
+
+                messages.success(
+                    request,
+                    "Урок успішно створено!"
+                )
+
+    lessons = Lesson.objects.all().select_related(
+        'subject',
+        'teacher',
+        'group',
+        'student'
+    ).order_by(
+        'date',
+        'start_time'
+    )
+
+    subjects = Subject.objects.filter(
+        is_active=True
+    )
+
+    groups = Group.objects.filter(
+        is_active=True
+    )
+
+    branches = Branch.objects.filter(
+        is_active=True
+    )
+
+    teachers = User.objects.filter(
+        role='TEACHER',
+        is_active=True
+    )
+
+    return render(
+        request,
+        'core/lessons.html',
+        {
+            'lessons': lessons,
+            'subjects': subjects,
+            'groups': groups,
+            'teachers': teachers,
+            'branches': branches,
+        }
+    )
+
+
+@login_required
 def reports_view(request):
-    return render(request, 'core/reports.html')
+
+    user = request.user
+
+    if user.role == 'TEACHER' and not user.is_staff:
+
+        lessons = Lesson.objects.filter(
+            teacher=user
+        )
+
+    else:
+
+        lessons = Lesson.objects.all()
+
+    total_lessons = lessons.count()
+
+    completed_lessons = lessons.filter(
+        status='COMPLETED'
+    ).count()
+
+    cancelled_lessons = lessons.filter(
+        status='CANCELLED'
+    ).count()
+
+    scheduled_lessons = lessons.filter(
+        status='SCHEDULED'
+    ).count()
+
+    attendance = Attendance.objects.filter(
+        lesson__in=lessons
+    )
+
+    total_attendance = attendance.count()
+
+    present_count = attendance.filter(
+        is_present=True
+    ).count()
+
+    absent_count = total_attendance - present_count
+
+    attendance_percent = round(
+        (present_count / total_attendance) * 100,
+        1
+    ) if total_attendance > 0 else 0
+
+    context = {
+        'total_lessons': total_lessons,
+        'completed_lessons': completed_lessons,
+        'cancelled_lessons': cancelled_lessons,
+        'scheduled_lessons': scheduled_lessons,
+        'total_attendance': total_attendance,
+        'present_count': present_count,
+        'absent_count': absent_count,
+        'attendance_percent': attendance_percent,
+
+        'lessons': lessons.order_by(
+            'date',
+            'start_time'
+        )[:10],
+    }
+
+    return render(
+        request,
+        'core/reports.html',
+        context
+    )
+
+
+@login_required
+def admin_panel(request):
+
+    if not request.user.is_staff and getattr(
+        request.user,
+        'role',
+        None
+    ) != 'ADMIN':
+
+        return redirect('teacher_dashboard')
+
+    from backend.users.models import User
+
+    context = {
+        'students_count': Student.objects.filter(
+            is_active=True
+        ).count(),
+
+        'teachers_count': User.objects.filter(
+            role='TEACHER',
+            is_active=True
+        ).count(),
+
+        'lessons_count': Lesson.objects.count(),
+
+        'groups_count': Group.objects.filter(
+            is_active=True
+        ).count(),
+    }
+
+    return render(
+        request,
+        'core/admin_panel.html',
+        context
+    )
+
+@login_required
+def admin_branches(request):
+    if not request.user.is_staff and getattr(request.user, 'role', None) != 'ADMIN':
+        return redirect('teacher_dashboard')
+
+    if request.method == 'POST':
+        Branch.objects.create(
+            name=request.POST.get('name'),
+            city=request.POST.get('city', ''),
+            address=request.POST.get('address', ''),
+            is_active=True
+        )
+        messages.success(request, 'Філію створено!')
+        return redirect('admin_branches')
+
+    branches = Branch.objects.filter(is_active=True)
+
+    return render(request, 'core/admin_branches.html', {
+        'branches': branches
+    })
+
+@login_required
+def admin_students(request):
+    if not request.user.is_staff and getattr(request.user, 'role', None) != 'ADMIN':
+        return redirect('teacher_dashboard')
+    if request.method == 'POST':
+        Student.objects.create(
+            first_name=request.POST.get('first_name'),
+            last_name=request.POST.get('last_name'),
+            phone=request.POST.get('phone', ''),
+            email=request.POST.get('email', ''),
+            branch_id=request.POST.get('branch'),
+            is_active=True
+        )
+        messages.success(request, 'Студента створено!')
+        return redirect('admin_students')
+    students = Student.objects.filter(is_active=True).select_related('branch')
+    branches = Branch.objects.filter(is_active=True)
+    return render(request, 'core/admin_students.html', {'students': students, 'branches': branches})
+
+@login_required  
+def admin_teachers(request):
+    if not request.user.is_staff and getattr(request.user, 'role', None) != 'ADMIN':
+        return redirect('teacher_dashboard')
+    from backend.users.models import User
+    if request.method == 'POST':
+        User.objects.create_user(
+            phone_number=request.POST.get('phone_number'),
+            password=request.POST.get('password'),
+            first_name=request.POST.get('first_name'),
+            last_name=request.POST.get('last_name'),
+            role='TEACHER'
+        )
+        messages.success(request, 'Вчителя створено!')
+        return redirect('admin_teachers')
+    from backend.users.models import User
+    teachers = User.objects.filter(role='TEACHER', is_active=True)
+    return render(request, 'core/admin_teachers.html', {'teachers': teachers})
 
 class TeacherLessonsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]

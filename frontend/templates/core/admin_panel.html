@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Адмін панель{% endblock %}
+
+{% block content %}
+
+<h1>Адмін панель</h1>
+
+<div class="cards">
+    <div class="card">
+        <h2>Студенти</h2>
+        <p>Додавання та перегляд студентів</p>
+        <a href="/teacher/admin-panel/students/" class="btn btn-blue">Відкрити</a>
+    </div>
+
+    <div class="card">
+        <h2>Вчителі</h2>
+        <p>Додавання та перегляд викладачів</p>
+        <a href="/teacher/admin-panel/teachers/" class="btn btn-blue">Відкрити</a>
+    </div>
+
+    <div class="card">
+        <h2>Уроки</h2>
+        <p>Створення розкладу занять</p>
+        <a href="/teacher/lessons/" class="btn btn-blue">Відкрити</a>
+    </div>
+
+    <div class="card">
+        <h2>Звіти</h2>
+        <p>Перегляд статистики та відвідуваності</p>
+        <a href="/teacher/reports/" class="btn btn-blue">Відкрити</a>
+    </div>
+</div>
+
+<style>
+.cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 30px;
+}
+
+.card {
+    padding: 25px;
+}
+
+.card h2 {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+</style>
+
+{% endblock %}
