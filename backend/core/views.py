@@ -3,50 +3,39 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.decorators import action
 import datetime
 
-from .models import Lesson, Student, Attendance, Branch, Subject, SubscriptionPlan, SubscriptionPrice, Group, Subscription, LessonTemplate
+from .models import (
+    Lesson, Student, Attendance, Branch, Subject,
+    SubscriptionPlan, SubscriptionPrice, Group,
+    Subscription, LessonTemplate
+)
+
 from .serializers import (
     LessonSerializer, StudentSerializer, BranchSerializer, SubjectSerializer,
     SubscriptionPlanSerializer, SubscriptionPriceSerializer, GroupSerializer,
     AttendanceSerializer, SubscriptionSerializer, LessonTemplateSerializer
 )
-from .permissions import IsAdminOrReadOnly, IsAdminOrTeacher, IsAdminOrTeacherForAttendance
+
+from .permissions import (
+    IsAdminOrReadOnly,
+    IsAdminOrTeacher,
+    IsAdminOrTeacherForAttendance
+)
 
 
 @login_required
 def teacher_dashboard(request):
     user = request.user
-    if request.method == 'POST':
-        subject_id = request.POST.get('subject')
-        group_id = request.POST.get('group')
-        date = request.POST.get('date')
-        start_time = request.POST.get('start_time')
-        end_time = request.POST.get('end_time')
-        if subject_id and date and start_time and end_time:
-            Lesson.objects.create(
-                subject_id=subject_id,
-                group_id=group_id if group_id else None,
-                date=date,
-                start_time=start_time,
-                end_time=end_time,
-                teacher=user
-            )
-            messages.success(request, "Урок успішно додано!")
-            return redirect('teacher_dashboard')
-        else:
-            messages.error(request, "Будь ласка, заповніть усі поля форми.")
 
-    lessons = Lesson.objects.filter(teacher=user).order_by('date', 'start_time')
-    subjects = Subject.objects.all()
-    groups = Group.objects.all()
+    lessons = Lesson.objects.filter(
+        teacher=user
+    ).order_by('date', 'start_time')
+
     return render(request, 'core/teacher_dashboard.html', {
         'lessons': lessons,
-        'subjects': subjects,
-        'groups': groups,
         'debug_id': user.id
     })
 
@@ -58,7 +47,9 @@ def mark_attendance(request, lesson_id):
     else:
         lesson = get_object_or_404(Lesson, id=lesson_id, teacher=request.user)
 
-    students = lesson.group.students.all() if lesson.group else ([lesson.student] if lesson.student else [])
+    students = lesson.group.students.all() if lesson.group else (
+        [lesson.student] if lesson.student else []
+    )
 
     if request.method == 'POST':
         custom_status = request.POST.get('lesson_status')
@@ -75,7 +66,7 @@ def mark_attendance(request, lesson_id):
                 lesson=lesson,
                 student=student,
                 defaults={
-                    'is_present': (status_val == 'present'),
+                    'is_present': status_val == 'present',
                     'comment': comment_val
                 }
             )
@@ -85,22 +76,19 @@ def mark_attendance(request, lesson_id):
         if request.user.role == 'ADMIN' or request.user.is_staff:
             return redirect('lessons')
 
-        if request.user.role == 'ADMIN' or request.user.is_staff:
-            return redirect('lessons')
-
-        return redirect('/teacher/lessons/')
+        return redirect('teacher_dashboard')
 
     return render(request, 'core/mark_attendance.html', {
         'lesson': lesson,
         'students': students
     })
 
+
 @login_required
 def lessons_view(request):
     from backend.users.models import User
 
     if request.method == 'POST':
-
         subject_id = request.POST.get('subject')
         group_id = request.POST.get('group') or None
         date = request.POST.get('date')
@@ -131,7 +119,6 @@ def lessons_view(request):
         conflict_count = 0
 
         if schedule_type == 'recurring' and date_to and week_days:
-
             current_date = datetime.datetime.strptime(
                 date,
                 "%Y-%m-%d"
@@ -147,9 +134,7 @@ def lessons_view(request):
             ]
 
             while current_date <= end_repeat_date:
-
                 if current_date.weekday() in selected_week_days:
-
                     conflict = Lesson.objects.filter(
                         teacher_id=teacher_id,
                         date=current_date,
@@ -160,11 +145,8 @@ def lessons_view(request):
                     ).exists()
 
                     if conflict:
-
                         conflict_count += 1
-
                     else:
-
                         Lesson.objects.create(
                             lesson_type=lesson_type,
                             schedule_type='recurring',
@@ -196,7 +178,6 @@ def lessons_view(request):
                 )
 
         else:
-
             conflict = Lesson.objects.filter(
                 teacher_id=teacher_id,
                 date=date,
@@ -207,14 +188,11 @@ def lessons_view(request):
             ).exists()
 
             if conflict:
-
                 messages.error(
                     request,
                     "Конфлікт: вчитель вже має урок в цей час!"
                 )
-
             else:
-
                 Lesson.objects.create(
                     lesson_type=lesson_type,
                     schedule_type='single',
@@ -242,75 +220,42 @@ def lessons_view(request):
         'start_time'
     )
 
-    subjects = Subject.objects.filter(
-        is_active=True
-    )
-
-    groups = Group.objects.filter(
-        is_active=True
-    )
-
-    branches = Branch.objects.filter(
-        is_active=True
-    )
+    subjects = Subject.objects.filter(is_active=True)
+    groups = Group.objects.filter(is_active=True)
+    branches = Branch.objects.filter(is_active=True)
 
     teachers = User.objects.filter(
         role='TEACHER',
         is_active=True
     )
 
-    return render(
-        request,
-        'core/lessons.html',
-        {
-            'lessons': lessons,
-            'subjects': subjects,
-            'groups': groups,
-            'teachers': teachers,
-            'branches': branches,
-        }
-    )
+    return render(request, 'core/lessons.html', {
+        'lessons': lessons,
+        'subjects': subjects,
+        'groups': groups,
+        'teachers': teachers,
+        'branches': branches,
+    })
 
 
 @login_required
 def reports_view(request):
-
     user = request.user
 
     if user.role == 'TEACHER' and not user.is_staff:
-
-        lessons = Lesson.objects.filter(
-            teacher=user
-        )
-
+        lessons = Lesson.objects.filter(teacher=user)
     else:
-
         lessons = Lesson.objects.all()
 
     total_lessons = lessons.count()
+    completed_lessons = lessons.filter(status='COMPLETED').count()
+    cancelled_lessons = lessons.filter(status='CANCELLED').count()
+    scheduled_lessons = lessons.filter(status='SCHEDULED').count()
 
-    completed_lessons = lessons.filter(
-        status='COMPLETED'
-    ).count()
-
-    cancelled_lessons = lessons.filter(
-        status='CANCELLED'
-    ).count()
-
-    scheduled_lessons = lessons.filter(
-        status='SCHEDULED'
-    ).count()
-
-    attendance = Attendance.objects.filter(
-        lesson__in=lessons
-    )
+    attendance = Attendance.objects.filter(lesson__in=lessons)
 
     total_attendance = attendance.count()
-
-    present_count = attendance.filter(
-        is_present=True
-    ).count()
-
+    present_count = attendance.filter(is_present=True).count()
     absent_count = total_attendance - present_count
 
     attendance_percent = round(
@@ -327,55 +272,31 @@ def reports_view(request):
         'present_count': present_count,
         'absent_count': absent_count,
         'attendance_percent': attendance_percent,
-
-        'lessons': lessons.order_by(
-            'date',
-            'start_time'
-        )[:10],
+        'lessons': lessons.order_by('date', 'start_time')[:10],
     }
 
-    return render(
-        request,
-        'core/reports.html',
-        context
-    )
+    return render(request, 'core/reports.html', context)
 
 
 @login_required
 def admin_panel(request):
-
-    if not request.user.is_staff and getattr(
-        request.user,
-        'role',
-        None
-    ) != 'ADMIN':
-
+    if not request.user.is_staff and getattr(request.user, 'role', None) != 'ADMIN':
         return redirect('teacher_dashboard')
 
     from backend.users.models import User
 
     context = {
-        'students_count': Student.objects.filter(
-            is_active=True
-        ).count(),
-
+        'students_count': Student.objects.filter(is_active=True).count(),
         'teachers_count': User.objects.filter(
             role='TEACHER',
             is_active=True
         ).count(),
-
         'lessons_count': Lesson.objects.count(),
-
-        'groups_count': Group.objects.filter(
-            is_active=True
-        ).count(),
+        'groups_count': Group.objects.filter(is_active=True).count(),
     }
 
-    return render(
-        request,
-        'core/admin_panel.html',
-        context
-    )
+    return render(request, 'core/admin_panel.html', context)
+
 
 @login_required
 def admin_branches(request):
@@ -389,6 +310,7 @@ def admin_branches(request):
             address=request.POST.get('address', ''),
             is_active=True
         )
+
         messages.success(request, 'Філію створено!')
         return redirect('admin_branches')
 
@@ -398,10 +320,12 @@ def admin_branches(request):
         'branches': branches
     })
 
+
 @login_required
 def admin_students(request):
     if not request.user.is_staff and getattr(request.user, 'role', None) != 'ADMIN':
         return redirect('teacher_dashboard')
+
     if request.method == 'POST':
         Student.objects.create(
             first_name=request.POST.get('first_name'),
@@ -411,17 +335,29 @@ def admin_students(request):
             branch_id=request.POST.get('branch'),
             is_active=True
         )
+        
         messages.success(request, 'Студента створено!')
         return redirect('admin_students')
-    students = Student.objects.filter(is_active=True).select_related('branch')
-    branches = Branch.objects.filter(is_active=True)
-    return render(request, 'core/admin_students.html', {'students': students, 'branches': branches})
 
-@login_required  
+    students = Student.objects.filter(
+        is_active=True
+    ).select_related('branch')
+
+    branches = Branch.objects.filter(is_active=True)
+
+    return render(request, 'core/admin_students.html', {
+        'students': students,
+        'branches': branches
+    })
+
+
+@login_required
 def admin_teachers(request):
     if not request.user.is_staff and getattr(request.user, 'role', None) != 'ADMIN':
         return redirect('teacher_dashboard')
+
     from backend.users.models import User
+
     if request.method == 'POST':
         User.objects.create_user(
             phone_number=request.POST.get('phone_number'),
@@ -430,14 +366,23 @@ def admin_teachers(request):
             last_name=request.POST.get('last_name'),
             role='TEACHER'
         )
+
         messages.success(request, 'Вчителя створено!')
         return redirect('admin_teachers')
-    from backend.users.models import User
-    teachers = User.objects.filter(role='TEACHER', is_active=True)
-    return render(request, 'core/admin_teachers.html', {'teachers': teachers})
+
+    teachers = User.objects.filter(
+        role='TEACHER',
+        is_active=True
+    )
+
+    return render(request, 'core/admin_teachers.html', {
+        'teachers': teachers
+    })
+
 
 class TeacherLessonsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         lessons = Lesson.objects.filter(teacher=request.user)
         serializer = LessonSerializer(lessons, many=True)
@@ -446,9 +391,18 @@ class TeacherLessonsAPIView(APIView):
 
 class LessonStudentsAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, lesson_id):
-        lesson = get_object_or_404(Lesson, id=lesson_id, teacher=request.user)
-        students = lesson.group.students.all() if lesson.group else ([lesson.student] if lesson.student else [])
+        lesson = get_object_or_404(
+            Lesson,
+            id=lesson_id,
+            teacher=request.user
+        )
+
+        students = lesson.group.students.all() if lesson.group else (
+            [lesson.student] if lesson.student else []
+        )
+
         serializer = StudentSerializer(students, many=True)
         return Response(serializer.data)
 
@@ -460,10 +414,13 @@ class LessonViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+
         if user.is_staff:
             return super().get_queryset()
+
         if hasattr(user, 'role') and user.role == 'TEACHER':
             return Lesson.objects.filter(teacher=user)
+
         return Lesson.objects.none()
 
     def perform_create(self, serializer):
@@ -522,8 +479,16 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         lesson = serializer.validated_data['lesson']
-        if hasattr(self.request.user, 'role') and self.request.user.role == 'TEACHER' and lesson.teacher_id != self.request.user.id:
-            raise PermissionDenied('Teacher can only mark attendance on their own lessons.')
+
+        if (
+            hasattr(self.request.user, 'role')
+            and self.request.user.role == 'TEACHER'
+            and lesson.teacher_id != self.request.user.id
+        ):
+            raise PermissionDenied(
+                'Teacher can only mark attendance on their own lessons.'
+            )
+
         serializer.save()
 
 
@@ -538,6 +503,7 @@ class LessonTemplateViewSet(viewsets.ModelViewSet):
 
     def generate_lessons(self, template):
         current_date = template.date_from
+
         while current_date <= template.date_to:
             if current_date.weekday() == template.day_of_week:
                 teacher_conflict = Lesson.objects.filter(
@@ -545,7 +511,9 @@ class LessonTemplateViewSet(viewsets.ModelViewSet):
                     date=current_date,
                     start_time__lt=template.end_time,
                     end_time__gt=template.start_time
-                ).exclude(status='CANCELLED').exists()
+                ).exclude(
+                    status='CANCELLED'
+                ).exists()
 
                 if not teacher_conflict:
                     Lesson.objects.create(
@@ -559,7 +527,9 @@ class LessonTemplateViewSet(viewsets.ModelViewSet):
                         end_time=template.end_time,
                         status='SCHEDULED'
                     )
+
             current_date += datetime.timedelta(days=1)
+
 
 class AttendanceHistoryView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -573,12 +543,19 @@ class AttendanceHistoryView(APIView):
         if not student_id:
             return Response({'error': 'student_id is required'}, status=400)
 
-        qs = Attendance.objects.filter(student_id=student_id).select_related('lesson', 'lesson__subject')
+        qs = Attendance.objects.filter(
+            student_id=student_id
+        ).select_related(
+            'lesson',
+            'lesson__subject'
+        )
 
         if subject_id:
             qs = qs.filter(lesson__subject_id=subject_id)
+
         if date_from:
             qs = qs.filter(lesson__date__gte=date_from)
+
         if date_to:
             qs = qs.filter(lesson__date__lte=date_to)
 
@@ -587,6 +564,7 @@ class AttendanceHistoryView(APIView):
         absent = total - present
 
         data = []
+
         for record in qs.order_by('lesson__date'):
             data.append({
                 'date': record.lesson.date,
@@ -621,12 +599,21 @@ class TeacherScheduleView(APIView):
 
         if date_from:
             qs = qs.filter(date__gte=date_from)
+
         if date_to:
             qs = qs.filter(date__lte=date_to)
 
-        qs = qs.select_related('subject', 'student', 'group').order_by('date', 'start_time')
+        qs = qs.select_related(
+            'subject',
+            'student',
+            'group'
+        ).order_by(
+            'date',
+            'start_time'
+        )
 
         data = []
+
         for lesson in qs:
             data.append({
                 'id': lesson.id,
@@ -653,11 +640,18 @@ class BranchStatisticsView(APIView):
         if not branch_id:
             return Response({'error': 'branch_id is required'}, status=400)
 
-        active_students = Student.objects.filter(branch_id=branch_id, is_active=True).count()
+        active_students = Student.objects.filter(
+            branch_id=branch_id,
+            is_active=True
+        ).count()
 
-        lessons_qs = Lesson.objects.filter(subject__branch_id=branch_id)
+        lessons_qs = Lesson.objects.filter(
+            subject__branch_id=branch_id
+        )
+
         if date_from:
             lessons_qs = lessons_qs.filter(date__gte=date_from)
+
         if date_to:
             lessons_qs = lessons_qs.filter(date__lte=date_to)
 
@@ -665,15 +659,23 @@ class BranchStatisticsView(APIView):
         completed = lessons_qs.filter(status='COMPLETED').count()
         cancelled = lessons_qs.filter(status='CANCELLED').count()
 
-        attendance_qs = Attendance.objects.filter(lesson__subject__branch_id=branch_id)
+        attendance_qs = Attendance.objects.filter(
+            lesson__subject__branch_id=branch_id
+        )
+
         if date_from:
             attendance_qs = attendance_qs.filter(lesson__date__gte=date_from)
+
         if date_to:
             attendance_qs = attendance_qs.filter(lesson__date__lte=date_to)
 
         total_attendance = attendance_qs.count()
         present_count = attendance_qs.filter(is_present=True).count()
-        attendance_pct = round((present_count / total_attendance * 100), 1) if total_attendance > 0 else 0
+
+        attendance_pct = round(
+            (present_count / total_attendance * 100),
+            1
+        ) if total_attendance > 0 else 0
 
         return Response({
             'branch_id': branch_id,

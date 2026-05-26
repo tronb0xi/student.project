@@ -92,18 +92,3 @@ class CurrentUserAPIView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-def register_view(request):
-    if request.method == 'POST':
-        phone = request.POST.get('phone')
-        password = request.POST.get('password')
-
-        if phone and password:
-            if User.objects.filter(phone_number=phone).exists():
-                messages.error(request, "Цей номер вже зареєстрований")
-            else:
-                user = User.objects.create_user(phone_number=phone, password=password)
-                messages.success(request, "Акаунт створено!")
-                return redirect('login') 
-    
-    return render(request, 'users/register.html')
