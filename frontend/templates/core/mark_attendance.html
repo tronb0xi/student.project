@@ -1,53 +1,209 @@
 {% extends 'base.html' %}
 {% block title %}Відмітити відвідуваність{% endblock %}
+
 {% block content %}
 
-<div style="max-width: 800px; margin: 0 auto;">
+<div style="max-width: 900px; margin: 0 auto;">
+
     <div class="card">
-        <h1>Управління уроком та журнал</h1>
-        
-        <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 25px; line-height: 1.6;">
-            <strong>Предмет:</strong> {{ lesson.subject.name }}<br>
-            <strong>Дата:</strong> {{ lesson.date|date:"d.m.Y" }}<br>
-            <strong>Час:</strong> {{ lesson.start_time|time:"H:i" }} - {{ lesson.end_time|time:"H:i" }}
+
+        <h1 style="margin-bottom: 25px;">
+            Управління уроком та журнал
+        </h1>
+
+        <div style="
+            background: #f1f3f5;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        ">
+            <div>
+                <strong>Предмет:</strong>
+                {{ lesson.subject.name }}
+            </div>
+
+            <div>
+                <strong>Дата:</strong>
+                {{ lesson.date|date:"d.m.Y" }}
+            </div>
+
+            <div>
+                <strong>Час:</strong>
+                {{ lesson.start_time|time:"H:i" }}
+                -
+                {{ lesson.end_time|time:"H:i" }}
+            </div>
         </div>
 
         <form method="POST">
+
             {% csrf_token %}
-            
-            <div style="background: #e9ecef; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
-                <label style="font-weight: bold; margin-right: 15px;">Статус уроку:</label>
-                <select name="lesson_status" style="padding: 6px 12px; font-weight: bold; border-radius: 4px; border: 1px solid #ccc;">
-                    <option value="SCHEDULED" {% if lesson.status == 'SCHEDULED' %}selected{% endif %}>Заплановано</option>
-                    <option value="COMPLETED" {% if lesson.status == 'COMPLETED' %}selected{% endif %}>Проведено</option>
-                    <option value="CANCELLED" {% if lesson.status == 'CANCELLED' %}selected{% endif %}>Скасовано</option>
+
+            <div style="
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 10px;
+                margin-bottom: 30px;
+                border: 1px solid #ddd;
+            ">
+
+                <label style="
+                    font-weight: bold;
+                    display: block;
+                    margin-bottom: 10px;
+                ">
+                    Статус уроку
+                </label>
+
+                <select
+                    name="lesson_status"
+                    style="
+                        padding: 10px 14px;
+                        border-radius: 6px;
+                        border: 1px solid #ccc;
+                        font-weight: bold;
+                        width: 250px;
+                    "
+                >
+                    <option
+                        value="SCHEDULED"
+                        {% if lesson.status == 'SCHEDULED' %}selected{% endif %}
+                    >
+                        Заплановано
+                    </option>
+
+                    <option
+                        value="COMPLETED"
+                        {% if lesson.status == 'COMPLETED' %}selected{% endif %}
+                    >
+                        Проведено
+                    </option>
+
+                    <option
+                        value="CANCELLED"
+                        {% if lesson.status == 'CANCELLED' %}selected{% endif %}
+                    >
+                        Скасовано
+                    </option>
                 </select>
+
             </div>
 
-            <h2>Студенти:</h2>
+            <h2 style="margin-bottom: 20px;">
+                Студенти
+            </h2>
+
             {% if students %}
+
                 {% for student in students %}
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee;">
-                    <span style="font-size: 16px; font-weight: bold;">{{ student.first_name }} {{ student.last_name }}</span>
-                    <div style="display: flex; gap: 15px; align-items: center;">
-                        <label><input type="radio" name="status_{{ student.id }}" value="present" checked> Присутній</label>
-                        <label><input type="radio" name="status_{{ student.id }}" value="absent"> Відсутній</label>
-                        <input type="text" name="comment_{{ student.id }}" placeholder="Коментар" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 200px;">
+
+                <div style="
+                    background: white;
+                    border: 1px solid #e5e5e5;
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin-bottom: 15px;
+                ">
+
+                    <div style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        flex-wrap: wrap;
+                        gap: 15px;
+                    ">
+
+                        <div style="
+                            font-size: 17px;
+                            font-weight: bold;
+                            color: #333;
+                        ">
+                            {{ student.first_name }}
+                            {{ student.last_name }}
+                        </div>
+
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 20px;
+                            flex-wrap: wrap;
+                        ">
+
+                            <label style="font-weight: 500;">
+                                <input
+                                    type="radio"
+                                    name="status_{{ student.id }}"
+                                    value="present"
+                                    checked
+                                >
+                                Присутній
+                            </label>
+
+                            <label style="font-weight: 500;">
+                                <input
+                                    type="radio"
+                                    name="status_{{ student.id }}"
+                                    value="absent"
+                                >
+                                Відсутній
+                            </label>
+
+                            <input
+                                type="text"
+                                name="comment_{{ student.id }}"
+                                placeholder="Коментар"
+                                style="
+                                    padding: 8px 12px;
+                                    border: 1px solid #ccc;
+                                    border-radius: 6px;
+                                    width: 220px;
+                                "
+                            >
+
+                        </div>
+
                     </div>
+
                 </div>
+
                 {% endfor %}
+
             {% else %}
-                <p style="color: #666; font-style: italic;">До цього уроку не додано студентів.</p>
+
+                <div style="
+                    background: #fff3cd;
+                    color: #856404;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border: 1px solid #ffeeba;
+                ">
+                    До цього уроку не додано студентів.
+                </div>
+
             {% endif %}
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-top: 35px;
+            ">
+
                 <a href="{% url 'lessons' %}" class="btn btn-red">
                     Скасувати
                 </a>
-                <button type="submit" class="btn btn-green">Зберегти</button>
+
+                <button type="submit" class="btn btn-green">
+                    Зберегти
+                </button>
+
             </div>
+
         </form>
+
     </div>
+
 </div>
 
 {% endblock %}
