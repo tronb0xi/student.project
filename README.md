@@ -47,7 +47,12 @@ POSTGRES_PASSWORD=edupassword
 DEBUG=True
 
 ## API документація
-Swagger доступний за адресою: http://127.0.0.1:8000/api/docs/
+
+Swagger локально:
+http://127.0.0.1:8000/api/docs/
+
+Swagger на Render:
+https://student-project-cv8v.onrender.com/api/docs/
 
 ## Ролі користувачів
 - **ADMIN** — повний доступ: управління студентами, вчителями, розкладом, звітами
